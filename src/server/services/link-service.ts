@@ -62,9 +62,7 @@ export async function getLinkAsset(id: string) {
   return toDto(asset);
 }
 
-type LinkAssetModel = Prisma.LinkAssetGetPayload<{
-  include: {};
-}>;
+type LinkAssetModel = Prisma.LinkAssetGetPayload<Prisma.LinkAssetDefaultArgs>;
 
 function toDto(asset: LinkAssetModel): LinkAssetDTO {
   return {

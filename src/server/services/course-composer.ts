@@ -65,10 +65,9 @@ export async function composeCourseDraft({ creatorId, linkAssetIds, title }: Dra
   const grouped = groupAssetsIntoModules(assets);
 
   const modules: CourseModule[] = [];
-  const lessons: CourseLesson[] = [];
 
   for (const [moduleIndex, { title: moduleTitle, description, assets: moduleAssets }] of grouped.entries()) {
-    const module = await prisma.module.create({
+    const createdModule = await prisma.module.create({
       data: {
         courseId: course.id,
         index: moduleIndex,
@@ -77,19 +76,21 @@ export async function composeCourseDraft({ creatorId, linkAssetIds, title }: Dra
       },
     });
 
-    modules.push({
-      id: module.id,
+    const moduleOutline: CourseModule = {
+      id: createdModule.id,
       index: moduleIndex,
       title: moduleTitle,
       description,
       lessons: [],
-    });
+    };
+
+    modules.push(moduleOutline);
 
     for (const [lessonIndex, asset] of moduleAssets.entries()) {
       const lesson = await prisma.lesson.create({
         data: {
           courseId: course.id,
-          moduleId: module.id,
+          moduleId: createdModule.id,
           linkAssetId: asset.id,
           index: lessonIndex,
           title: deriveLessonTitle(asset, lessonIndex + 1),
@@ -100,19 +101,19 @@ export async function composeCourseDraft({ creatorId, linkAssetIds, title }: Dra
         },
       });
 
-      modules.at(-1)?.lessons.push({
+      const lessonOutline: CourseLesson = {
         id: lesson.id,
-        moduleId: module.id,
+        moduleId: createdModule.id,
         index: lessonIndex,
         title: lesson.title,
         summary: lesson.summary ?? undefined,
         keyPoints: (lesson.keyPoints as CourseLesson["keyPoints"]) ?? [],
-        difficulty: lesson.difficulty ?? undefined,
+        difficulty: (lesson.difficulty as CourseLesson["difficulty"]) ?? undefined,
         estMinutes: lesson.estMinutes ?? undefined,
         linkAssetId: asset.id,
-      });
+      };
 
-      lessons.push(modules.at(-1)!.lessons.at(-1)!);
+      moduleOutline.lessons.push(lessonOutline);
 
       // Fire-and-forget the async summarization job for future enhancements.
       enqueueSummarizeJob({ courseId: course.id, lessonId: lesson.id }).catch((error) =>
